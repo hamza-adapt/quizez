@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📜 Pop Quiz · History Flash</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f1f4f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .quiz-container {
+            max-width: 700px;
+            width: 100%;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 20px;
+            padding: 0 8px;
+        }
+        .header h1 {
+            font-weight: 600;
+            font-size: 2rem;
+            color: #0a1929;
+            letter-spacing: -0.5px;
+        }
+        .counter {
+            background: white;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #2c3e50;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            font-size: 0.95rem;
+        }
+        .flashcard {
+            background: white;
+            border-radius: 48px;
+            box-shadow: 0 25px 45px -12px rgba(0,20,40,0.3);
+            padding: 48px 32px;
+            margin-bottom: 28px;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: background-color 0.3s ease, box-shadow 0.2s;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .flashcard.question-mode {
+            background: white;
+        }
+        .flashcard.answer-mode {
+            background: #fef9e7;
+            border: 2px solid #fbbf24;
+            box-shadow: 0 25px 40px -12px #fbbf2450;
+        }
+        .card-content {
+            font-size: 2rem;
+            font-weight: 500;
+            line-height: 1.4;
+            text-align: center;
+            word-break: break-word;
+            color: #0f172a;
+        }
+        .card-sub {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 1rem;
+            color: #4b5563;
+            font-weight: 400;
+            min-height: 28px;
+        }
+        .button-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            background: white;
+            padding: 16px 32px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+            transition: 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid #e2e8f0;
+            flex: 1 1 auto;
+            min-width: 160px;
+            color: #1e293b;
+        }
+        .btn-primary {
+            background: #0f172a;
+            color: white;
+            border: none;
+            box-shadow: 0 12px 24px -10px #0f172a;
+        }
+        .btn-primary:hover {
+            background: #1e293b;
+            transform: scale(1.02);
+        }
+        .btn-secondary:hover {
+            background: #f1f5f9;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="header">
+            <h1>📖 Pop Quiz</h1>
+            <div class="counter" id="questionCounter">1 / 6</div>
+        </div>
+
+        <!-- Flashcard -->
+        <div class="flashcard" id="flashcard">
+            <div class="card-content" id="displayText">Loading...</div>
+            <div class="card-sub" id="hintText"></div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-secondary" id="flipBtn">🔄 Flip to answer</button>
+            <button class="btn btn-primary" id="nextBtn">⏩ Next question</button>
+        </div>
+        <div class="footer-note">🧠 Test yourself daily — history edition</div>
+    </div>
+
+    <script>
+        (function() {
+            // ----- Question bank (history themed) -----
+            const questions = [
+                {
+                    question: "Which year did the Berlin Wall fall?",
+                    answer: "1989"
+                },
+                {
+                    question: "What was the name of the first manned Apollo mission to land on the Moon?",
+                    answer: "Apollo 11"
+                },
+                {
+                    question: "Who was the ancient Greek god of the sea?",
+                    answer: "Poseidon"
+                },
+                {
+                    question: "The Magna Carta was signed in which century?",
+                    answer: "13th century (1215)"
+                },
+                {
+                    question: "Which empire built Machu Picchu?",
+                    answer: "The Inca Empire"
+                },
+                {
+                    question: "Who wrote 'The Communist Manifesto'?",
+                    answer: "Karl Marx and Friedrich Engels"
+                }
+            ];
+
+            // ----- State -----
+            let currentIndex = 0;            // index of current question
+            let showingAnswer = false;        // whether answer is revealed
+            const totalQuestions = questions.length;
+
+            // ----- DOM elements -----
+            const flashcard = document.getElementById('flashcard');
+            const displayText = document.getElementById('displayText');
+            const hintText = document.getElementById('hintText');
+            const counterSpan = document.getElementById('questionCounter');
+            const flipBtn = document.getElementById('flipBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            // ----- Helper: update UI based on current question & showingAnswer -----
+            function refreshDisplay() {
+                const q = questions[currentIndex];
+                if (showingAnswer) {
+                    displayText.textContent = q.answer;
+                    hintText.textContent = '✨ answer';
+                    flashcard.classList.remove('question-mode');
+                    flashcard.classList.add('answer-mode');
+                    flipBtn.textContent = '🔍 Hide answer';
+                } else {
+                    displayText.textContent = q.question;
+                    hintText.textContent = '🤔 think... then flip';
+                    flashcard.classList.add('question-mode');
+                    flashcard.classList.remove('answer-mode');
+                    flipBtn.textContent = '🔄 Flip to answer';
+                }
+                counterSpan.textContent = `${currentIndex+1} / ${totalQuestions}`;
+            }
+
+            // ----- Load a new random question (different from current if possible) -----
+            function loadRandomQuestion() {
+                if (totalQuestions === 0) return;
+                let newIndex;
+                // avoid the same question if there's more than one
+                if (totalQuestions > 1) {
+                    do {
+                        newIndex = Math.floor(Math.random() * totalQuestions);
+                    } while (newIndex === currentIndex);
+                } else {
+                    newIndex = 0;
+                }
+                currentIndex = newIndex;
+                showingAnswer = false;        // reset to question side
+                refreshDisplay();
+            }
+
+            // ----- Flip: toggle showingAnswer -----
+            function flipCard() {
+                if (!questions.length) return;
+                showingAnswer = !showingAnswer;
+                refreshDisplay();
+            }
+
+            // ----- Next button: random question, reset to question side -----
+            function nextQuestion() {
+                loadRandomQuestion();
+            }
+
+            // ----- Event listeners -----
+            flipBtn.addEventListener('click', flipCard);
+            nextBtn.addEventListener('click', nextQuestion);
+
+            // ----- Initial load -----
+            if (totalQuestions > 0) {
+                // start with a random question
+                currentIndex = Math.floor(Math.random() * totalQuestions);
+                showingAnswer = false;
+                refreshDisplay();
+            } else {
+                displayText.textContent = 'No questions';
+            }
+
+            // Optional: keyboard shortcuts (f for flip, n for next)
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'f' || e.key === 'F') {
+                    e.preventDefault();
+                    flipCard();
+                } else if (e.key === 'n' || e.key === 'N') {
+                    e.preventDefault();
+                    nextQuestion();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
